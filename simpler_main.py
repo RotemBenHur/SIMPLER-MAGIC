@@ -13,9 +13,12 @@ def main():
     input_format = config.get('input_output', 'input_format')
     abc_dir_path = config.get('abc', 'abc_dir_path')
     #BenchmarkStrings = ast.literal_eval(config.get("SIMPLER_Mapping", "BenchmarkStrings"))
-    MAX_D = config.get('SIMPLER_Mapping', 'MAX_D')
+    Max_num_gates = config.get('SIMPLER_Mapping', 'Max_num_gates')
     ROW_SIZE = [int(i) for i in ast.literal_eval(config.get("SIMPLER_Mapping", "ROW_SIZE"))]
     output_path = config.get('input_output', 'output_path')
+    generate_json = config.get('SIMPLER_Mapping', 'generate_json')
+    print_mapping = config.get('SIMPLER_Mapping', 'print_mapping')
+    print_warnings = config.get('SIMPLER_Mapping', 'print_warnings')
 
     abc_exe_path = os.path.join(abc_dir_path, "abc")
     abc_rc_path = os.path.join(abc_dir_path, "abc.rc")
@@ -36,7 +39,7 @@ def main():
     os.system('%s -f "%s"' % (abc_exe_path, abc_script_path))
 
     # Mapping into the memory array
-    SIMPLER_Mapping.SIMPLER_Main([abc_output_path], MAX_D, ROW_SIZE, input_path.split(".")[0])
+    SIMPLER_Mapping.SIMPLER_Main([abc_output_path], Max_num_gates, ROW_SIZE, input_path.split(".")[0], generate_json, print_mapping, print_warnings)
     
 
     # Clean files

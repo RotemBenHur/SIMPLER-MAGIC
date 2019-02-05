@@ -14,7 +14,7 @@ The "RUN TIME parameters" part includes the next parameters:
     JSON_CODE_GEN - to create an execution sequence JSON file, set this flag to TRUE.
     PRINT_CODE_GEN - to enable information print, set the flag to True. 
     PRINT_WARNING - to enable warnings print, set the flag to True.
-    MAX_D - TODO - need to complete
+    Max_num_gates - the maximum number of gates the tool generates a mapping to 
     SORT_ROOTS - for arbitrary roots order set to 'NO'. For ascending roots order (by CU value) set to 'ASCEND'.
                  For descending roots order (by CU value) set to 'DESCEND'.
 
@@ -30,13 +30,13 @@ import json
 
 
 #print controls
-JSON_CODE_GEN = False
-PRINT_CODE_GEN = False
-PRINT_WARNING = True
-SORT_ROOTS = 'NO' #Set to one of the follows: 'NO, 'ASCEND' 'DESCEND' 
+#JSON_CODE_GEN = False
+#PRINT_CODE_GEN = True
+#PRINT_WARNING = True
+#SORT_ROOTS = 'NO' #Set to one of the follows: 'NO, 'ASCEND' 'DESCEND' 
  
 #limit max D
-#MAX_D = 20000 
+#Max_num_gates = 20000 
 #ROW_SIZE = [256,512,1024] #a list of row sizes to run the algorithm with
 
 
@@ -112,7 +112,7 @@ class CellState:
         return self.current_gate
         
     def Print(self):
-        print('state is',self.state,'gate is',self.current_gate)
+        print 'state is',self.state,'gate is',self.current_gate
         
          
 class Code_Generation_Table_Line:
@@ -181,7 +181,7 @@ class Code_Generation_Table_Line:
     
     #Other methods:    
     def LineIntrlPrint(self):
-        print('serial_number =',self.serial_number,'inputs_list =',self.inputs_list,'op =',self.op,'cell =',self.cell,'time =',self.time)
+        print 'serial_number =',self.serial_number,'inputs_list =',self.inputs_list,'op =',self.op,'cell =',self.cell,'time =',self.time
     
     def InsertInputLine(self,SN):
         #Updates the table - inserts a line who describes a net input
@@ -282,7 +282,7 @@ class Code_Generation_Top_Data_struct:
     def Intrl_Print(self,Str):
         global PRINT_CODE_GEN
         if PRINT_CODE_GEN == True:
-            print(Str)
+            print Str
                 
     def PrintCodeGeneration(self,Benchmark_name):    
         #Prints the data and the statistics, can create the benchmark's execution sequence JSON file
@@ -339,8 +339,8 @@ class Code_Generation_Top_Data_struct:
         print 'Benchmark:',Benchmark_name
         print 'Total number of cycles:',self.TotalCycles
         print 'Number of reuse cycles:',self.ReuseCycles
-        self.InitializationPercentage = self.ReuseCycles/self.TotalCycles
-        print 'Initialization Percentage:',self.InitializationPercentage
+        #self.InitializationPercentage = self.ReuseCycles/self.TotalCycles
+        #print 'Initialization Percentage:',self.InitializationPercentage
         connected_gates = self.NumberOfGates - self.NoInputWireNum
         print 'Number of gates:',connected_gates
         print 'Max number of used cells:',self.Max_Num_Of_Used_Cells
@@ -401,7 +401,7 @@ def readoperations(bmfId,varLegendRow,varLegendCol):
             return 
         elif ((tline.find("buf ") != -1) or (tline.find("zero ") != -1) or (tline.find("one ") != -1)):
             if (PRINT_WARNING == True):
-                print("** Warning ** unsupported operation: \'" + tline.replace('\n','') + "\'\n")
+                print "** Warning ** unsupported operation: \'" + tline.replace('\n','') + "\'\n"
         elif ((tline.find("inv") != -1) or (tline.find("nor") != -1)):
             
             idx_op = tline.find("nor")
@@ -463,13 +463,13 @@ def GetRoots():
                 roots.append(i)
             else:
                 if (PRINT_WARNING == True):
-                    print('** Warning **',varLegendRow[i],'has no input')
+                    print '** Warning **',varLegendRow[i],'has no input'
                 code_generation_top.Increase_NoInputWireNum_by_one()
                 code_generation_top.Inset_To_NoInputWireList(i)
                 code_generation_top.Insert_No_Input_Line(i)
         else:
             FO[i] = row_sum   
-    print('\n')
+    print '\n'
     return roots
     
 def GetParents(V_i):
@@ -580,15 +580,23 @@ def IncreaseOutputsFo():
 
    
 #======================== SIMPLER MAPPING =======================
-def SIMPLER_Main (BenchmarkStrings, MAX_D, ROW_SIZE, Benchmark_name):
+def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, generate_json, print_mapping, print_warnings):
     
-    global CELLS,lr,lc,i,N,t,FO,Map,code_generation_top,len_input_and_wire,LEAFS_inputs,CU,D,PRINT_WARNING,varLegendRow,UnConnected_wire,varLegendRow,PRINT_CODE_GEN,InputString,OutputString,Benchmark,PRINT_CODE_GEN
+    global CELLS,lr,lc,i,N,t,FO,Map,code_generation_top,len_input_and_wire,LEAFS_inputs,CU,D,PRINT_WARNING,varLegendRow,UnConnected_wire,varLegendRow,PRINT_CODE_GEN,InputString,OutputString,Benchmark,JSON_CODE_GEN
+    
+    #print controls
+    print type(bool(generate_json))
+    JSON_CODE_GEN = bool(generate_json)
+    PRINT_CODE_GEN = bool(print_mapping)
+    PRINT_WARNING = bool(print_warnings)
+    SORT_ROOTS = 'NO' #Set to one of the follows: 'NO, 'ASCEND' 'DESCEND' 
+    
     
     for Row_size in ROW_SIZE: 
         for Benchmark in BenchmarkStrings:
             
             #Parse operations 
-            print("\n\n" + Benchmark + ". Started Benchmark " + str((BenchmarkStrings.index(Benchmark)) + 1) + "\n")
+            print "\n\n" + Benchmark + ". Started Benchmark " + str((BenchmarkStrings.index(Benchmark)) + 1) + "\n"
             bmfId = open(Benchmark,"r") #open file       
             #read input/output/wire
             tline = bmfId.readline()
@@ -618,8 +626,8 @@ def SIMPLER_Main (BenchmarkStrings, MAX_D, ROW_SIZE, Benchmark_name):
             #analyze dependencies
             lr = len(varLegendRow)
             lc = len(varLegendCol) 
-            if (lr>MAX_D or lc>MAX_D):
-                print("** net too big, skip " + str(lr) +" X " + str(lc) + "\n")
+            if (lr>Max_num_gates or lc>Max_num_gates):
+                print "** net too big, skip " + str(lr) +" X " + str(lc) + "\n"
                 continue
             code_generation_top = Code_Generation_Top_Data_struct(lr,lc,Row_size,gate_num) #creates a Code_Generation_Top_Data_struct instance       
             for input_idx in range(0,len(InputString)):   
@@ -656,7 +664,7 @@ def SIMPLER_Main (BenchmarkStrings, MAX_D, ROW_SIZE, Benchmark_name):
             if SORT_ROOTS == 'NO':
                 for r in ROOTs:    
                     if (AllocateRow(r) == False):
-                        print('False - no mapping')
+                        print 'False - no mapping'
                         code_generation_success_flag = False #Printing flag 
                         break #To enable multiple runs. To fit the code to the article, comment this line, and uncomment the two next lines. 
                         #return False #Cannot find mapping 
@@ -669,7 +677,7 @@ def SIMPLER_Main (BenchmarkStrings, MAX_D, ROW_SIZE, Benchmark_name):
                     sorted_ROOTs.sort(key = lambda k: k[1], reverse=False)
                 for sr in sorted_ROOTs:    
                     if (AllocateRow(sr[0]) == False):
-                        print('False - no mapping')
+                        print 'False - no mapping'
                         code_generation_success_flag = False
                         break
                         #return False #cannot find mapping
@@ -687,7 +695,7 @@ def SIMPLER_Main (BenchmarkStrings, MAX_D, ROW_SIZE, Benchmark_name):
             bmfId.close() #close file
             CellState.Set_cur_num_of_used_cells_to_zero() #need to initiate because its a class variable
             CellState.Set_max_num_of_used_cells_to_zero() #need to initiate because its a class variable
-            print('End of Benchmark '+ str((BenchmarkStrings.index(Benchmark)) + 1) + '\n\n')
+            print 'End of Benchmark '+ str((BenchmarkStrings.index(Benchmark)) + 1) + '\n\n'
             
 #=========================== End of SIMPLER MAPPING ===========================
 

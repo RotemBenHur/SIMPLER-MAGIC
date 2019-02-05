@@ -19,8 +19,11 @@ output_path=full_adder_1bit_output
 abc_dir_path=/home/adi/abc/alanmi-abc-eac02745facf
 
 [SIMPLER_Mapping]
-MAX_D=20000
+Max_num_gates=20000
 ROW_SIZE=[5,8,10]
+generate_json=True
+print_mapping=True
+print_warnings=True
 
 ```
 Change the parameters according to your needs.
