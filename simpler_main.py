@@ -16,9 +16,9 @@ def main():
     Max_num_gates = config.get('SIMPLER_Mapping', 'Max_num_gates')
     ROW_SIZE = [int(i) for i in ast.literal_eval(config.get("SIMPLER_Mapping", "ROW_SIZE"))]
     output_path = config.get('input_output', 'output_path')
-    generate_json = config.get('SIMPLER_Mapping', 'generate_json')
-    print_mapping = config.get('SIMPLER_Mapping', 'print_mapping')
-    print_warnings = config.get('SIMPLER_Mapping', 'print_warnings')
+    generate_json = config.getboolean('SIMPLER_Mapping', 'generate_json')
+    print_mapping = config.getboolean('SIMPLER_Mapping', 'print_mapping')
+    print_warnings = config.getboolean('SIMPLER_Mapping', 'print_warnings')
 
     abc_exe_path = os.path.join(abc_dir_path, "abc")
     abc_rc_path = os.path.join(abc_dir_path, "abc.rc")

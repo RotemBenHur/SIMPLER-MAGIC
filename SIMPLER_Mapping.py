@@ -218,7 +218,6 @@ class Code_Generation_Top_Data_struct:
         self.code_generation_table = [Code_Generation_Table_Line() for idx in range(0,NetSizeRow)]
         self.TotalCycles = 0
         self.ReuseCycles = 0
-        self.InitializationPercentage = 0.0
         self.NumberOfGates = NumberOfGates
         self.RowSize = RowSize
         self.InitializationList = [] #composed of Code_Generation_Table_Line instances 
@@ -339,8 +338,6 @@ class Code_Generation_Top_Data_struct:
         print 'Benchmark:',Benchmark_name
         print 'Total number of cycles:',self.TotalCycles
         print 'Number of reuse cycles:',self.ReuseCycles
-        #self.InitializationPercentage = self.ReuseCycles/self.TotalCycles
-        #print 'Initialization Percentage:',self.InitializationPercentage
         connected_gates = self.NumberOfGates - self.NoInputWireNum
         print 'Number of gates:',connected_gates
         print 'Max number of used cells:',self.Max_Num_Of_Used_Cells
@@ -352,9 +349,9 @@ class Code_Generation_Top_Data_struct:
                              'Inputs':input_list_for_print[len('Inputs:'):],'Number of Inputs':len(InputString),
                              'Outputs':output_list_for_print[len('Outputs:'):],'Number of Outputs':len(OutputString), 
                              'Total cycles':self.TotalCycles,'Reuse cycles':self.ReuseCycles,'Execution sequence' : execution_dict_for_JSON}                    
-            with open('JSON_' + str(self.RowSize) + '_' + Benchmark[:Benchmark.find('.')] + '.JSON','w') as f:
+            with file('JSON_' + str(self.RowSize) + '_' + Benchmark[:Benchmark.find('.')] + '.JSON','w') as f:
                 json.dump(top_JSON_dict,f,indent=4)
-            f.close()                
+                f.close()                
 
               
     def PrintLines(self):
@@ -585,12 +582,10 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
     global CELLS,lr,lc,i,N,t,FO,Map,code_generation_top,len_input_and_wire,LEAFS_inputs,CU,D,PRINT_WARNING,varLegendRow,UnConnected_wire,varLegendRow,PRINT_CODE_GEN,InputString,OutputString,Benchmark,JSON_CODE_GEN
     
     #print controls
-    print type(bool(generate_json))
-    JSON_CODE_GEN = bool(generate_json)
-    PRINT_CODE_GEN = bool(print_mapping)
-    PRINT_WARNING = bool(print_warnings)
+    JSON_CODE_GEN = generate_json
+    PRINT_CODE_GEN = print_mapping
+    PRINT_WARNING = print_warnings
     SORT_ROOTS = 'NO' #Set to one of the follows: 'NO, 'ASCEND' 'DESCEND' 
-    
     
     for Row_size in ROW_SIZE: 
         for Benchmark in BenchmarkStrings:
