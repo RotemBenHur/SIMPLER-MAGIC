@@ -693,8 +693,7 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
             code_generation_top.TotalCycles = t
             code_generation_top.Set_Max_Num_Of_Used_Cells(CellState.get_max_num_of_used_cells())
             if (code_generation_success_flag == True):
-                code_generation_top.
-				(Benchmark_name,Benchmark,N) 
+                code_generation_top.(Benchmark_name,Benchmark,N) 
             
             #Benchmark's end 
             bmfId.close() #close file
