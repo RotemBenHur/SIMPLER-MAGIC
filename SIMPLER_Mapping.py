@@ -112,7 +112,7 @@ class CellState:
         return self.current_gate
         
     def Print(self):
-        print 'state is',self.state,'gate is',self.current_gate
+        print('state is',self.state,'gate is',self.current_gate)
         
          
 class Code_Generation_Table_Line:
@@ -181,7 +181,7 @@ class Code_Generation_Table_Line:
     
     #Other methods:    
     def LineIntrlPrint(self):
-        print 'serial_number =',self.serial_number,'inputs_list =',self.inputs_list,'op =',self.op,'cell =',self.cell,'time =',self.time
+        print('serial_number =',self.serial_number,'inputs_list =',self.inputs_list,'op =',self.op,'cell =',self.cell,'time =',self.time)
     
     def InsertInputLine(self,SN):
         #Updates the table - inserts a line who describes a net input
@@ -218,6 +218,7 @@ class Code_Generation_Top_Data_struct:
         self.code_generation_table = [Code_Generation_Table_Line() for idx in range(0,NetSizeRow)]
         self.TotalCycles = 0
         self.ReuseCycles = 0
+        self.InitializationPercentage = 0.0
         self.NumberOfGates = NumberOfGates
         self.RowSize = RowSize
         self.InitializationList = [] #composed of Code_Generation_Table_Line instances 
@@ -281,13 +282,15 @@ class Code_Generation_Top_Data_struct:
     def Intrl_Print(self,Str):
         global PRINT_CODE_GEN
         if PRINT_CODE_GEN == True:
-            print Str
+            print(Str)
                 
-    def PrintCodeGeneration(self,Benchmark_name):    
+    def PrintCodeGeneration(self,Benchmark_name,Benchmark,ROW_SISE):    
         #Prints the data and the statistics, can create the benchmark's execution sequence JSON file
         
-        global varLegendRow,PRINT_CODE_GEN,InputString,OutputString,Benchmark
-            
+        global varLegendRow,PRINT_CODE_GEN,InputString,OutputString
+                
+        print('\\\\\\\\\\\\ MAPPING OF',Benchmark_name,'WITH ROW SIZE =',ROW_SISE,' \\\\\\\\\\\\\n')
+        
         #inputs
         input_list_for_print = 'Inputs:{' 
         for input_idx in range(0,self.lr - self.lc):
@@ -311,7 +314,8 @@ class Code_Generation_Top_Data_struct:
         mergerd_table = self.code_generation_table + self.InitializationList
         mergerd_table.sort(key = lambda k: k.Get_time(), reverse=False) #Sorts by time
         execution_dict_for_JSON={} #JSON
-        self.Intrl_Print('\nExecution sequence: {')
+        execution_dict_for_JSON.update({'cycle 0':'cycle 0'})
+        self.Intrl_Print('\nEXECUTION SEQUENCE + MAPPING: {')
         for table_line in mergerd_table:
             if (table_line.Get_op() == Code_Generation_Table_Line.Get_Initialization_op_val()):            
                 init_list_to_print = '{'
@@ -334,24 +338,27 @@ class Code_Generation_Top_Data_struct:
         self.Intrl_Print('}')         
         
         #Statistics
-        print '\nRESULTS AND STATISTICS:'
-        print 'Benchmark:',Benchmark_name
-        print 'Total number of cycles:',self.TotalCycles
-        print 'Number of reuse cycles:',self.ReuseCycles
+        print ('\nRESULTS AND STATISTICS:')
+        print ('Benchmark:',Benchmark_name)
+        print ('Total number of cycles:',self.TotalCycles)
+        print ('Number of reuse cycles:',self.ReuseCycles)
+        self.InitializationPercentage = self.ReuseCycles/self.TotalCycles
+        print ('Initialization percentage:',self.InitializationPercentage)
         connected_gates = self.NumberOfGates - self.NoInputWireNum
-        print 'Number of gates:',connected_gates
-        print 'Max number of used cells:',self.Max_Num_Of_Used_Cells
-        print 'Row size (number of columns):',self.RowSize,'\n\n'
+        print ('Number of gates:',connected_gates)
+        print ('Max number of used cells:',self.Max_Num_Of_Used_Cells)
+        print ('Row size (number of columns):',self.RowSize,'\n\n')
            
         #JSON creation
         if (JSON_CODE_GEN == True):
             top_JSON_dict = {'Benchmark':Benchmark,'Row size':self.RowSize,'Number of Gates':self.NumberOfGates,
                              'Inputs':input_list_for_print[len('Inputs:'):],'Number of Inputs':len(InputString),
                              'Outputs':output_list_for_print[len('Outputs:'):],'Number of Outputs':len(OutputString), 
-                             'Total cycles':self.TotalCycles,'Reuse cycles':self.ReuseCycles,'Execution sequence' : execution_dict_for_JSON}                    
-            with file('JSON_' + str(self.RowSize) + '_' + Benchmark[:Benchmark.find('.')] + '.JSON','w') as f:
+                             'Total cycles':self.TotalCycles,'Reuse cycles':self.ReuseCycles,'Execution sequence' : execution_dict_for_JSON} 
+            #print('Benchmark= ',Benchmark)							 
+            with open('JSON_' + str(self.RowSize) + '_' + Benchmark[:Benchmark.find('.')] + '.JSON','w') as f:
                 json.dump(top_JSON_dict,f,indent=4)
-                f.close()                
+            f.close()                
 
               
     def PrintLines(self):
@@ -398,7 +405,7 @@ def readoperations(bmfId,varLegendRow,varLegendCol):
             return 
         elif ((tline.find("buf ") != -1) or (tline.find("zero ") != -1) or (tline.find("one ") != -1)):
             if (PRINT_WARNING == True):
-                print "** Warning ** unsupported operation: \'" + tline.replace('\n','') + "\'\n"
+                print("** Warning ** unsupported operation: \'" + tline.replace('\n','') + "\'\n")
         elif ((tline.find("inv") != -1) or (tline.find("nor") != -1)):
             
             idx_op = tline.find("nor")
@@ -460,13 +467,13 @@ def GetRoots():
                 roots.append(i)
             else:
                 if (PRINT_WARNING == True):
-                    print '** Warning **',varLegendRow[i],'has no input'
+                    print('** Warning **',varLegendRow[i],'has no input')
                 code_generation_top.Increase_NoInputWireNum_by_one()
                 code_generation_top.Inset_To_NoInputWireList(i)
                 code_generation_top.Insert_No_Input_Line(i)
         else:
             FO[i] = row_sum   
-    print '\n'
+    print('\n')
     return roots
     
 def GetParents(V_i):
@@ -591,7 +598,7 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
         for Benchmark in BenchmarkStrings:
             
             #Parse operations 
-            print "\n\n" + Benchmark + ". Started Benchmark " + str((BenchmarkStrings.index(Benchmark)) + 1) + "\n"
+            print("\n\n" + Benchmark + ". Started Benchmark " + str((BenchmarkStrings.index(Benchmark)) + 1) + "\n")
             bmfId = open(Benchmark,"r") #open file       
             #read input/output/wire
             tline = bmfId.readline()
@@ -620,9 +627,9 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
         
             #analyze dependencies
             lr = len(varLegendRow)
-            lc = len(varLegendCol) 
+            lc = len(varLegendCol)        
             if (lr>Max_num_gates or lc>Max_num_gates):
-                print "** net too big, skip " + str(lr) +" X " + str(lc) + "\n"
+                print("** net too big, skip " + str(lr) +" X " + str(lc) + "\n")
                 continue
             code_generation_top = Code_Generation_Top_Data_struct(lr,lc,Row_size,gate_num) #creates a Code_Generation_Top_Data_struct instance       
             for input_idx in range(0,len(InputString)):   
@@ -659,7 +666,8 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
             if SORT_ROOTS == 'NO':
                 for r in ROOTs:    
                     if (AllocateRow(r) == False):
-                        print 'False - no mapping'
+                        print('\\\\\\\\\\\\ MAPPING OF',Benchmark_name,'WITH ROW SIZE =',N,' \\\\\\\\\\\\\n')
+                        print('False - no mapping\n')
                         code_generation_success_flag = False #Printing flag 
                         break #To enable multiple runs. To fit the code to the article, comment this line, and uncomment the two next lines. 
                         #return False #Cannot find mapping 
@@ -672,7 +680,8 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
                     sorted_ROOTs.sort(key = lambda k: k[1], reverse=False)
                 for sr in sorted_ROOTs:    
                     if (AllocateRow(sr[0]) == False):
-                        print 'False - no mapping'
+                        print('\\\\\\\\\\\\ MAPPING OF',Benchmark_name,'WITH ROW SIZE =',N,' \\\\\\\\\\\\\n')
+                        print('False - no mapping\n')
                         code_generation_success_flag = False
                         break
                         #return False #cannot find mapping
@@ -684,13 +693,14 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
             code_generation_top.TotalCycles = t
             code_generation_top.Set_Max_Num_Of_Used_Cells(CellState.get_max_num_of_used_cells())
             if (code_generation_success_flag == True):
-                code_generation_top.PrintCodeGeneration(Benchmark_name) 
+                code_generation_top.
+				(Benchmark_name,Benchmark,N) 
             
             #Benchmark's end 
             bmfId.close() #close file
             CellState.Set_cur_num_of_used_cells_to_zero() #need to initiate because its a class variable
             CellState.Set_max_num_of_used_cells_to_zero() #need to initiate because its a class variable
-            print 'End of Benchmark '+ str((BenchmarkStrings.index(Benchmark)) + 1) + '\n\n'
+            print('End of Benchmark '+ str((BenchmarkStrings.index(Benchmark)) + 1) + '\n\n')
             
 #=========================== End of SIMPLER MAPPING ===========================
 

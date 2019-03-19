@@ -3,7 +3,7 @@ SIMPLER MAGIC: Synthesis and In-memory MaPping of Logic Execution in a single Ro
 
 ## Dependencies
 In order to use SIMPLER-MAGIC, you will need a Linux machine with:
-1. Python 2.7
+1. Python 3.6
 2. [ABC Synthesis Tool](https://bitbucket.org/alanmi/abc)
 
 ## Manual
@@ -19,7 +19,7 @@ output_path=full_adder_1bit_output
 abc_dir_path=/home/adi/abc/alanmi-abc-eac02745facf
 
 [SIMPLER_Mapping]
-Max_num_gates=20000
+Max_num_gates=20000    ;The maximum number of allowed gates
 ROW_SIZE=[5,8,10]
 generate_json=True
 print_mapping=True
@@ -30,5 +30,5 @@ Change the parameters according to your needs.
 
 2. Run:
 ```sh
-python simpler_main.py
+python3 simpler_main.py
 ```
