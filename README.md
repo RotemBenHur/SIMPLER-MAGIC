@@ -1,4 +1,4 @@
-# SIMPLE-MAGIC
+# SIMPLER-MAGIC
 SIMPLER MAGIC: Synthesis and In-memory MaPping of Logic Execution in a single Row for Memristor Aided loGIC
 
 ## Dependencies
