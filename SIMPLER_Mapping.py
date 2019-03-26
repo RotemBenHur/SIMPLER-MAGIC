@@ -366,7 +366,9 @@ class SIMPLER_Top_Data_Structure:
         #Execution sequence
         mergerd_list = self.NodesList + self.InitializationList
         mergerd_list.sort(key = lambda k: k.GetNodeTime(), reverse=False) #Sorts by time
-        execution_dict_for_JSON=OrderedDict({}) #JSON
+        #execution_dict_for_JSON=OrderedDict({}) #JSON
+        cells_to_init_list = ['INIT_CYCLE(' + str(idx) + ')' for idx in range(self.lr-self.lc,self.lr)]
+        execution_dict_for_JSON=OrderedDict({'T0':'Initialization(Ron)'+ str(cells_to_init_list).replace('[','{').replace(']','}').replace(' ','')}) #JSON
         self.Intrl_Print('\nEXECUTION SEQUENCE + MAPPING: {')
         for node in mergerd_list:
             if (node.GetNodeOp() == NodeData.Get_Initialization_op_val()):            
@@ -387,7 +389,7 @@ class SIMPLER_Top_Data_Structure:
                     execution_dict_for_JSON.update({'T' + str(node.GetNodeTime()) : node_name + '(' + str(node.GetNodeMap()) +')=' + node.GetNodeOp() + inputs_str}) #JSON
                 elif (node.GetNodeOp() != NodeData.Get_no_inputs_op_val()): #line.time = 0 -- inputs
                     self.Intrl_Print('T' + str(node.GetNodeTime()) + ':' + node_name + '(' + str(node.GetNodeNum()) +')=' + node.GetNodeOp())    
-                    execution_dict_for_JSON.update({'T' + str(node.GetNodeTime()) : node_name + '(' + str(node.GetNodeMap()) +')=' + node.GetNodeOp()}) #JSON                    
+                    #execution_dict_for_JSON.update({'T' + str(node.GetNodeTime()) : node_name + '(' + str(node.GetNodeMap()) +')=' + node.GetNodeOp()}) #JSON                    
         self.Intrl_Print('}')         
         
         #Statistics
@@ -405,10 +407,15 @@ class SIMPLER_Top_Data_Structure:
         #JSON creation
         if (JSON_CODE_GEN == True):
             #print(execution_dict_for_JSON)#debug
-            top_JSON_dict = {'Benchmark':self.Benchmark,'Row size':self.RowSize,'Number of Gates':self.NumberOfGates,
-                             'Inputs':input_list_for_print[len('Inputs:'):],'Number of Inputs':len(self.InputString),
-                             'Outputs':output_list_for_print[len('Outputs:'):],'Number of Outputs':len(self.OutputString), 
-                             'Total cycles':self.TotalCycles,'Reuse cycles':self.ReuseCycles,'Execution sequence' : execution_dict_for_JSON} 
+            top_JSON_dict=OrderedDict({'Benchmark':self.Benchmark}) #JSON
+            top_JSON_dict.update({'Row size':self.RowSize})
+            top_JSON_dict.update({'Number of Gates':self.NumberOfGates})
+            top_JSON_dict.update({'Inputs':input_list_for_print[len('Inputs:'):]})
+            top_JSON_dict.update({'Outputs':output_list_for_print[len('Outputs:'):]})
+            top_JSON_dict.update({'Number of Inputs':len(self.InputString)})
+            top_JSON_dict.update({'Total cycles':self.t})
+            top_JSON_dict.update({'Reuse cycles':self.ReuseCycles})
+            top_JSON_dict.update({'Execution sequence' : execution_dict_for_JSON})
             #print('Benchmark= ',Benchmark)                             
             with open('JSON_' + str(self.RowSize) + '_' + self.Benchmark + '.json','w') as f:
                 simplejson.dump(top_JSON_dict,f,indent=4)
