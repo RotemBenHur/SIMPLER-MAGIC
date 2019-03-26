@@ -126,8 +126,9 @@ class NodeData:
         self.inputs_list = InputIdxs
         self.op = Op
         
-    def Insert_AllocateCell_parameters(self,time):
+    def Insert_AllocateCell_parameters(self,cell,time):
         self.time = time
+        self.map = cell
         
     def Insert_No_Input_Node(self,NodeNum):
         #Inserts a line who describes a gate/wire who doesn't have inputs
@@ -231,7 +232,7 @@ class SIMPLER_Top_Data_Structure:
         self.NodesList = []
         self.CELLS = []
         self.i = 0
-        self.N = 0
+        self.N = RowSize
         self.t = 0 #TotalCycles
         self.ReuseCycles = 0
         self.LEAFS_inputs = []
@@ -321,8 +322,8 @@ class SIMPLER_Top_Data_Structure:
     def Insert_readoperations_parameters(self,SN,input_idxs,op):
         self.NodesList[SN].Insert_readoperations_parameters(SN,input_idxs,op)
         
-    def Insert_AllocateCell_parameters(self,line_num,cell,time):
-        self.NodesList[line_num].Insert_AllocateCell_parameters(cell,time)
+    def Insert_AllocateCell_parameters(self,line_num,cell):
+        self.NodesList[line_num].Insert_AllocateCell_parameters(cell,self.t)
         
     def Insert_No_Input_Node(self,SN):
         self.NodesList[SN].Insert_No_Input_Node(SN) 
@@ -385,16 +386,16 @@ class SIMPLER_Top_Data_Structure:
                     self.Intrl_Print('T' + str(node.GetNodeTime()) + ':' + node_name + '(' + str(node.GetNodeMap()) +')=' + node.GetNodeOp() + inputs_str)
                     execution_dict_for_JSON.update({'T' + str(node.GetNodeTime()) : node_name + '(' + str(node.GetNodeMap()) +')=' + node.GetNodeOp() + inputs_str}) #JSON
                 elif (node.GetNodeOp() != NodeData.Get_no_inputs_op_val()): #line.time = 0 -- inputs
-                    self.Intrl_Print('T' + str(node.GetNodeTime()) + ':' + node + '(' + str(node.GetNodeNum()) +')=' + node.GetNodeOp())    
+                    self.Intrl_Print('T' + str(node.GetNodeTime()) + ':' + node_name + '(' + str(node.GetNodeNum()) +')=' + node.GetNodeOp())    
                     execution_dict_for_JSON.update({'T' + str(node.GetNodeTime()) : node_name + '(' + str(node.GetNodeMap()) +')=' + node.GetNodeOp()}) #JSON                    
         self.Intrl_Print('}')         
         
         #Statistics
         print ('\nRESULTS AND STATISTICS:')
         print ('Benchmark:',self.Benchmark)
-        print ('Total number of cycles:',self.TotalCycles)
+        print ('Total number of cycles:',self.t)
         print ('Number of reuse cycles:',self.ReuseCycles)
-        self.InitializationPercentage = self.ReuseCycles/self.TotalCycles
+        self.InitializationPercentage = self.ReuseCycles/self.t
         print ('Initialization percentage:',self.InitializationPercentage)
         connected_gates = self.NumberOfGates - self.NoInputWireNum
         print ('Number of gates:',connected_gates)
@@ -437,7 +438,7 @@ class SIMPLER_Top_Data_Structure:
         return  list(filter(None,FieldString))
 
 
-    def readoperations(self,bmfId,varLegendRow,varLegendCol):
+    def readoperations(self,bmfId):
         #Parses the netlist assignments into a graph (matrix) 
 
         global code_generation_top,PRINT_WARNING 
@@ -537,7 +538,7 @@ class SIMPLER_Top_Data_Structure:
 
     def computeCU(self,V_i):
         #Computes the cell usage (CU) of gate (node) V_i  
-        if (self.NodesList[V_i].GetNodeCU() > 0):
+        if (self.NodesList[V_i].GetNodeCu() > 0):
             return # CU[V_i] was already generated and therefore doesn't change   
         childrens = self.ChildrenWithoutInputs(V_i)          
         if(len(childrens) == 0): #V_i has no childrens -> V_i is connected to function inputs only
@@ -545,12 +546,12 @@ class SIMPLER_Top_Data_Structure:
         else:
             if (len(childrens) == 1):
                 self.computeCU(childrens[0])
-                self.NodesList[V_i].SetNodeCu([childrens[0]])
+                self.NodesList[V_i].SetNodeCu(childrens[0])
             else:
                 childrens_cu = []
                 for child in childrens:
                     self.computeCU(child)
-                    childrens_cu.append(self.NodesList[child].GetNodeCU())
+                    childrens_cu.append(self.NodesList[child].GetNodeCu())
                 childrens_cu.sort(key=None, reverse=True)               
                 num_of_childrens = range(0,len(childrens)) # equal to + (i - 1) for all i in 1 to N (N is the number of childrens)           
                 self.NodesList[V_i].SetNodeCu(max(np.add(childrens_cu,num_of_childrens)))
@@ -560,7 +561,7 @@ class SIMPLER_Top_Data_Structure:
         #Allocates cells to the gate V_i and his children (a sub-tree rooted by V_i). 
         #In a case the allocation for one of V_i's children or V_i itself is failed, the function returns False. On successful allocation returns True.
         childrens = self.ChildrenWithoutInputs(V_i) #Equal to C(V_i) - the set of V_i's childrens 
-        childrens_sorted_by_cu = [[child,self.NodesList[child].GetNodeCU()] for child in childrens] # the loop creates a list composed of pairs of the form [child number, CU[child number]]
+        childrens_sorted_by_cu = [[child,self.NodesList[child].GetNodeCu()] for child in childrens] # the loop creates a list composed of pairs of the form [child number, CU[child number]]
         childrens_sorted_by_cu.sort(key = lambda k: k[1], reverse=True) #sorting by CU   
         childrens_sorted_by_cu = [elm[0] for elm in childrens_sorted_by_cu] #taking only the child (vertex) number       
         for V_j in childrens_sorted_by_cu:            
@@ -597,10 +598,10 @@ class SIMPLER_Top_Data_Structure:
                         self.CELLS[j].MarkAsAvailable()
                         FreeCell = j
                 self.t += 1 #Increments the number of cycles 
-                SIMPLER_Top_Data_Structure.Add_To_Initialization_List(self.t,CellsForInit)            
+                self.Add_To_Initialization_List(self.t,CellsForInit)            
         self.CELLS[FreeCell].MarkAsUsed(V_i) #Use the available cell
         self.t += 1 #Increments the number of cycles
-        SIMPLER_Top_Data_Structure.Insert_AllocateCell_parameters(V_i,FreeCell,self.t)
+        self.Insert_AllocateCell_parameters(V_i,FreeCell)
         for V_k in self.ChildrenWithoutInputs(V_i): #Updates the FO value if the allocated cells
             self.NodesList[V_k].SetNodeFO(self.NodesList[V_k].GetNodeFO() - 1)
             if (self.NodesList[V_k].GetNodeFO() == 0):
@@ -667,7 +668,7 @@ class SIMPLER_Top_Data_Structure:
    
 #======================== SIMPLER MAPPING =======================
 def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, generate_json, print_mapping, print_warnings):
-    global JSON_CODE_GEN, PRINT_CODE_GEN, PRINT_WARNING, print_warnings, SORT_ROOTS
+    global JSON_CODE_GEN, PRINT_CODE_GEN, PRINT_WARNING, SORT_ROOTS
     
     #print controls
     JSON_CODE_GEN = generate_json
@@ -690,7 +691,7 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
             SIMPLER_TDS.Set_Max_Num_Of_Used_Cells(CellState.get_max_num_of_used_cells())
             code_generation_success_flag =SIMPLER_TDS.RunAlgorithm()
             if (code_generation_success_flag == True):
-                SIMPLER_TDS.PrintCodeGeneration(Benchmark_name,Benchmark,SIMPLER_TDS.N) 
+                SIMPLER_TDS.PrintCodeGeneration() 
             
             #Benchmark's end 
             bmfId.close() #close file
