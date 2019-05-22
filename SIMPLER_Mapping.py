@@ -44,6 +44,118 @@ from collections import OrderedDict
 
 
 #================ Globals variables and Classes =================
+class SIMPLER_ListNode:  
+    
+    Init = 'Init'
+    Used = 'Used'
+    Available = 'Available'
+
+    def __init__(self, data):
+        self.data = data
+        self.next = None
+        self.previous = None
+        return
+
+    def has_value(self, value):
+        if self.data == value:
+            return True
+        else:
+            return False
+
+    def GetCellNumber(self):
+        return self.data
+
+    def Print(self):
+        print('data is', self.data)
+
+
+class DoubleLinkedList:  
+    def __init__(self,Id):
+        self.head = None
+        self.tail = None
+        self.length = 0
+        self.id = Id
+        return
+
+    def output_list(self):
+        "outputs the list (the value of the node, actually)"
+        current_node = self.head
+
+        while current_node is not None:
+            print(current_node.data)
+
+            # jump to the linked node
+            current_node = current_node.next
+        return
+
+
+    def Insert(self, item):
+
+        if isinstance(item, SIMPLER_ListNode):
+            if self.head is None:
+                self.head = item
+                item.previous = None
+                item.next = None
+                self.tail = item
+            else:
+                self.tail.next = item
+                item.previous = self.tail
+                self.tail = item
+                item.next = None
+            self.length += 1
+        return
+
+    def remove_item(self, item):
+        if isinstance(item, SIMPLER_ListNode):
+            if self.length == 1:
+                self.head = self.tail = None
+            elif self.head == item:
+                self.head = item.next
+            elif self.tail == item:
+                self.tail = item.previous
+            else:
+                next_item = item.next
+                prev_item = item.previous
+                item.previous.next = next_item
+                item.next.previous = prev_item
+            self.length -= 1
+
+
+    def IsNotEmpty(self):
+       if self.length > 0:
+           return True
+       else:
+           return False
+
+    def GetFirst(self):
+        if self.length > 0:
+            return self.head
+        else:
+            return None
+
+    def Conacatenate(self, List2):
+        self.tail = List2.head
+        List2.head = None
+        self.length += List2.length
+
+    def DeleteFirst(self):
+        self.remove_item(self.head)
+
+    def Delete(self, Idx):
+        self.remove_item(Idx) #Idx is reference
+
+    def EmptyList(self):
+        self.head = self.tail = None
+        self.length = 0
+
+    def GetListData(self):
+        current_node = self.head
+        cells_values = []
+        while current_node is not None:
+            cells_values.append(current_node.GetCellNumber())
+            # jump to the linked node
+            current_node = current_node.next
+        return
 
 class NodeData:
     
@@ -74,6 +186,7 @@ class NodeData:
         self.map = 0
         self.inputs_list = Inputs_list
         self.time = Time
+        self.SIMPLER_lists_node = None
         
     def SetNodeNum(self,Num):
         self.node_num = Num
@@ -136,17 +249,24 @@ class NodeData:
         self.inputs_list = []
         self.op = self.No_inputs        
         self.map = -1 
-        self.time = 0    
+        self.time = 0   
+
+    def Set_SIMPLER_lists_node(self,ref):
+        print(ref)
+        self.SIMPLER_lists_node = ref
+
+    def Get_SIMPLER_lists_node(self):
+        return self.SIMPLER_lists_node
         
     def PrintNodeData(self):
         print('node_num =',self.node_num,'inputs_list =',self.inputs_list,'op =',self.op,'cell =',self.map,'time =',self.time,'CU =',self.CU,'FO =',self.FO)
 
-class CellState:
+class CellInfo:
     
     #States declarations 
-    available = 1 #The cell was allocated and available again
-    used = 2 #The cell is in use
-    init = 3 #The cell is not in use, but need to initialized  
+    Available = 1 #The cell was allocated and available again
+    Used = 2 #The cell is in use
+    Init = 3 #The cell is not in use, but need to initialized  
     
     #Global class parameters 
     max_num_of_used_cells = 0
@@ -163,54 +283,160 @@ class CellState:
 
     @classmethod    
     def Set_cur_num_of_used_cells_to_zero(cls):
-        cls.cur_num_of_used_cells = 0
-    
-    @classmethod
-    def get_cur_num_of_used_cells(cls):
-        return cls.cur_num_of_used_cells
-
-    @classmethod
-    def State_available(cls):
-        return cls.available
-    
-    @classmethod
-    def State_used(cls):
-        return cls.used
-    
-    @classmethod
-    def State_init(cls):
-        return cls.init 
+        cls.cur_num_of_used_cells = 0   
 
     #End of class methods
     
-    def __init__(self):
-        self.state = CellState.available
-        self.current_gate = -1
+    def __init__(self,Idx):
+        self.state = CellInfo.Available
+        #self.current_gate = -1
+        self.next = None
+        self.prev = None
+        self.cell_idx = Idx
+        self.current_gate_num = None
 
-    def MarkAsAvailable(self):
-        self.state = CellState.available
+    def GetCellIdx(self):
+        return self.cell_idx
 
-    def MarkAsUsed(self,gate_num):
-        self.state = CellState.used
-        self.current_gate = gate_num 
-        CellState.cur_num_of_used_cells += 1
-        if CellState.cur_num_of_used_cells > CellState.max_num_of_used_cells:
-            CellState.max_num_of_used_cells = CellState.cur_num_of_used_cells
+    def SetNext(self,idx):
+        self.next = idx
         
-    def MarkAsInit(self):
-        self.state = CellState.init
-        CellState.cur_num_of_used_cells -= 1
+    def SetPrev(self,idx):
+        self.prev = idx
+
+    def GetNext(self):
+        return self.next
         
-    def GetCellState(self):
-        return self.state
-    
-    def GetCurGate(self):
-        return self.current_gate
+    def GetPrev(self):
+        return self.prev
+
+    def SetCurGateNum(self,gate_num):
+        self.current_gate_num = gate_num
+
+    def GetCurGateNum(self):
+        return self.current_gate_num
+
+
+
+class CellsInfo:
+
+    def __init__(self,N):
+        self.used_head = None
+        self.used_tail = None
+        self.init_head = None
+        self.init_tail = None
+        self.available_head = None
+        self.available_tail = None
+        self.cells = [CellInfo(idx) for idx in range(0,N)]
+        self.init_list_for_json = []
+
+    #Available list methods
+    def GetFirst_Available(self):
+        if self.available_head == None:
+            return None
+        else:
+            return self.cells[self.available_head].GetCellIdx()
+
+    def Concatenate_init_to_available_list(self):
+        self.available_head = self.init_head
+        self.available_tail = self.init_tail
+        self.cells[self.available_tail].SetNext(None)
+        self.cells[self.available_head].SetPrev(None)
+        self.init_head = None
+        self.init_tail = None
+
+    def DeleteFirst_Available(self):
+        if self.available_head == self.available_tail:
+            self.cells[self.available_head].SetNext(None)
+            self.cells[self.available_head].SetPrev(None)
+            self.available_head = self.available_tail = None
+        else:
+            next_available_cell = self.cells[self.available_head].GetNext()
+            self.cells[self.available_head].SetNext(None)
+            self.available_head = next_available_cell
+            self.cells[next_available_cell].SetPrev(None)
+
+    def Insert_Available(self,cell_idx):
+        if self.available_head == None:
+            self.available_head = cell_idx
+            self.available_tail = cell_idx
+        else:
+            self.cells[self.available_head].SetPrev(cell_idx)
+            self.cells[cell_idx].SetNext(self.available_head)
+            self.available_head = cell_idx
+    #Init list methods
+    def IsNotEmpty_Init(self):
+        if self.init_head == None:
+            return False
+        else:
+            return True
+
+    def Empty_Init(self):
+        self.init_tail = None
+        self.init_head = None
+        self.init_list_for_json = []
+
+    def Insert_Init(self,cell_idx):
+        if self.init_head == None:
+            self.init_head = cell_idx
+            self.init_tail = cell_idx
+        else:
+            self.cells[self.init_head].SetPrev(cell_idx)
+            self.cells[cell_idx].SetNext(self.init_head)
+            self.init_head = cell_idx
+        cur_gate = self.cells[cell_idx].GetCurGateNum()
+        self.init_list_for_json.append([cur_gate,cell_idx])
+
+    #Used list methods
+    def Insert_Used(self,cell_idx,gate_num):
+        if self.used_head == None:
+            self.used_head = cell_idx
+            self.used_tail = cell_idx
+        else:
+            self.cells[self.used_head].SetPrev(cell_idx)
+            self.cells[cell_idx].SetNext(self.used_head)
+            self.used_head = cell_idx
+        self.cells[cell_idx].SetCurGateNum(gate_num)
+
+    def Delete_Used(self,cell_idx):
+        next_cell =  self.cells[cell_idx].GetNext()
+        prev_cell =  self.cells[cell_idx].GetPrev()
+
+        if self.used_head == self.used_tail and self.used_tail == cell_idx:
+            self.cells[cell_idx].SetNext(None)
+            self.cells[cell_idx].SetPrev(None)
+            self.used_tail = self.used_head = None
+        elif cell_idx == self.used_head:
+            next_head = self.cells[cell_idx].GetNext()
+            self.cells[cell_idx].SetNext(None)
+            self.used_head = next_head
+        elif cell_idx == self.used_tail:
+            next_tail = self.cells[cell_idx].GetPrev()
+            self.cells[cell_idx].SetPrev(None)
+            self.used_tail = None
+        else:
+            next_cell = self.cells[cell_idx].GetNext()
+            prev_cell = self.cells[cell_idx].GetPrev()
+            self.cells[cell_idx].SetNext(None)
+            self.cells[cell_idx].SetPrev(None)
+            self.cells[next_cell].SetPrev(prev_cell)
+            self.cells[prev_cell].SetPrev(next_cell)
+
+
+
+
+
         
-    def Print(self):
-        print('state is',self.state,'gate is',self.current_gate)
+
+
+
+
+
+
+
         
 # End of class CellState 
+
 
 class SIMPLER_Top_Data_Structure:
 
@@ -230,7 +456,6 @@ class SIMPLER_Top_Data_Structure:
         self.RowSize = RowSize
         self.NumberOfGates = 0
         self.NodesList = []
-        self.CELLS = []
         self.i = 0
         self.N = RowSize
         self.t = 0 #TotalCycles
@@ -243,6 +468,10 @@ class SIMPLER_Top_Data_Structure:
         self.NoInputWireList = [] 
         self.Max_Num_Of_Used_Cells = 0  
         self.UnConnected_wire = 0
+        self.cells = CellsInfo(self.N)
+        #self.UsedList = DoubleLinkedList(1)
+        #self.AvailableList = DoubleLinkedList(2)
+        #self.InitList = DoubleLinkedList(3)
 
 
         # read input/output/wire
@@ -274,9 +503,8 @@ class SIMPLER_Top_Data_Structure:
         for input_idx in range(len(self.InputString)):   
             self.NodesList[input_idx].InsertInputNode()
         self.GraphMat = np.zeros((self.lr,self.lc),dtype = np.int) #Graph matrix
-        self.readoperations(bmfId)  # parses the netlist         #TODO - need to define as a class method
+        self.readoperations(bmfId)  # parses the netlist         
         self.LEAFS_inputs = list(range(0,self.lr - self.lc)) #Inputs indexes
-        #code_generation_success_flag = True #TODO - what to do with that one? 
         
     #Seters/geters:     
     def Get_lr(self):
@@ -406,7 +634,6 @@ class SIMPLER_Top_Data_Structure:
 
         #JSON creation
         if (JSON_CODE_GEN == True):
-            #print(execution_dict_for_JSON)#debug
             top_JSON_dict=OrderedDict({'Benchmark':self.Benchmark}) #JSON
             top_JSON_dict.update({'Row size':self.RowSize})
             top_JSON_dict.update({'Number of Gates':self.NumberOfGates})
@@ -519,9 +746,9 @@ class SIMPLER_Top_Data_Structure:
                 else:
                     if (PRINT_WARNING == True):
                         print('** Warning **',self.varLegendRow[i],'has no input')
-                    SIMPLER_Top_Data_Structure.Increase_NoInputWireNum_by_one()
-                    SIMPLER_Top_Data_Structure.Inset_To_NoInputWireList(i)
-                    SIMPLER_Top_Data_Structure.Insert_No_Input_Line(i)
+                    self.Increase_NoInputWireNum_by_one()
+                    self.Inset_To_NoInputWireList(i)
+                    #self.Insert_No_Input_Line(i)
             else:
                 self.NodesList[i].SetNodeFO(row_sum) 
         print('\n')
@@ -553,7 +780,8 @@ class SIMPLER_Top_Data_Structure:
         else:
             if (len(childrens) == 1):
                 self.computeCU(childrens[0])
-                self.NodesList[V_i].SetNodeCu(childrens[0])
+                tmp = self.NodesList[childrens[0]].GetNodeCu()
+                self.NodesList[V_i].SetNodeCu(tmp)
             else:
                 childrens_cu = []
                 for child in childrens:
@@ -581,39 +809,32 @@ class SIMPLER_Top_Data_Structure:
                 return False
         return True
 
-
     def AllocateCell(self,V_i):
-        #Allocates cell for 1 gate. In case available cells don't exist, the function will initialize all the cells whose state is init, and will look again for available cell.
-        #At this point, if an available cell still doesn't exist, the function will return 0 (there is no mapping).  
-
-        CellsForInit = []
-        FreeCell = 0
-        j = 0 #To make the variable scope global in this function
-        for j in range(self.i,self.N): #The N-i dedicated cells (columns) for the computation. j gets values in the range i<=j<=N
-            #if j < N: #Only N cells exist  
-            if (self.CELLS[j].GetCellState() == CellState.State_available()):
-                FreeCell = j 
-                break #Available cell exists 
-            elif (self.CELLS[j].GetCellState() == CellState.State_init()):
-                CellsForInit.append([self.CELLS[j].GetCurGate(),j]) # CELLS[j].current_gate is for Json file creation
-        if (FreeCell == 0): #No available cell; therefore, all init cells are initialized simultaneously. 
-            if (CellsForInit == []):
-                return 0 #No cells to initialize 
+        FreeCell = self.cells.GetFirst_Available()
+        if FreeCell == None:
+            if self.cells.IsNotEmpty_Init():
+                self.t += 1
+                self.Add_To_Initialization_List(self.t, self.cells.init_list_for_json)
+                self.cells.Concatenate_init_to_available_list()
+                self.cells.Empty_Init()
+                FreeCell = self.cells.GetFirst_Available()
             else:
-                for j in range(self.N - 1,self.i - 1,-1): # at the for loop end's j is the first cell in CellsForInit 
-                    if (self.CELLS[j].GetCellState() == CellState.State_init()):
-                        self.CELLS[j].MarkAsAvailable()
-                        FreeCell = j
-                self.t += 1 #Increments the number of cycles 
-                self.Add_To_Initialization_List(self.t,CellsForInit)            
-        self.CELLS[FreeCell].MarkAsUsed(V_i) #Use the available cell
-        self.t += 1 #Increments the number of cycles
+                return 0
+        self.cells.DeleteFirst_Available()
+        self.cells.Insert_Used(FreeCell,V_i)
+        #self.NodesList[V_i].Set_SIMPLER_lists_node(FreeCell)
+        self.t += 1
         self.Insert_AllocateCell_parameters(V_i,FreeCell)
-        for V_k in self.ChildrenWithoutInputs(V_i): #Updates the FO value if the allocated cells
+        for V_k in self.ChildrenWithoutInputs(V_i):
+            #print(V_k,V_i, self.varLegendRow[V_k], self.varLegendRow[V_i])
             self.NodesList[V_k].SetNodeFO(self.NodesList[V_k].GetNodeFO() - 1)
             if (self.NodesList[V_k].GetNodeFO() == 0):
-                self.CELLS[self.NodesList[V_k].GetNodeMap()].MarkAsInit()
-        return FreeCell       
+                cell_to_be_moved = self.NodesList[V_k].GetNodeMap()
+                self.cells.Delete_Used(cell_to_be_moved)
+                self.cells.Insert_Init(cell_to_be_moved)
+                #self.NodesList[V_i].Set_SIMPLER_lists_node(None)
+        return FreeCell
+
               
     def IncreaseOutputsFo(self):
         # This function created to make sure outputs cells will not evacuated.
@@ -634,16 +855,13 @@ class SIMPLER_Top_Data_Structure:
             self.IncreaseOutputsFo() # To ensure outputs who are also inputs, will not be evacuated
             self.t = 0 #Number of clock cycles        
 
-            self.CELLS = [CellState() for cell in range(0,self.N)] #CELLS list initialization
-            for j in range(0,self.N):   
-                if (j < self.i): # j = 0 -> (i - 1)
-                    self.CELLS[j].MarkAsUsed(j) #an input
-                else: # j = i -> N (N is equal to ROW_SISE)
-                    self.CELLS[j].MarkAsAvailable()       
-          
+            for netlist_input in range(0,self.i):
+                self.cells.Insert_Used(netlist_input,netlist_input)
+            for cell in range(self.i,self.N):
+                self.cells.Insert_Available(cell) 
             #alg start here
             for r in ROOTs:
-                self.computeCU(r)      
+                self.computeCU(r)
             if SORT_ROOTS == 'NO':
                 for r in ROOTs:    
                     if (self.AllocateRow(r) == False):
@@ -654,7 +872,7 @@ class SIMPLER_Top_Data_Structure:
                         return False #Cannot find mapping 
                 return True #A mapping of the entire netlist was found 
             else:        
-                sorted_ROOTs = [[r,self.NodesList[r].GetNodeCU()] for r in ROOTs]
+                sorted_ROOTs = [[r,self.NodesList[r].GetNodeCu()] for r in ROOTs]
                 if SORT_ROOTS == 'DESCEND':
                     sorted_ROOTs.sort(key = lambda k: k[1], reverse=True)
                 elif SORT_ROOTS == 'ASCEND':
@@ -695,15 +913,15 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
                 continue
                               
             #Statistics calculations 
-            SIMPLER_TDS.Set_Max_Num_Of_Used_Cells(CellState.get_max_num_of_used_cells())
+            SIMPLER_TDS.Set_Max_Num_Of_Used_Cells(CellInfo.get_max_num_of_used_cells())
             code_generation_success_flag =SIMPLER_TDS.RunAlgorithm()
             if (code_generation_success_flag == True):
                 SIMPLER_TDS.PrintCodeGeneration() 
             
             #Benchmark's end 
             bmfId.close() #close file
-            CellState.Set_cur_num_of_used_cells_to_zero() #need to initiate because its a class variable
-            CellState.Set_max_num_of_used_cells_to_zero() #need to initiate because its a class variable
+            CellInfo.Set_cur_num_of_used_cells_to_zero() #need to initiate because its a class variable
+            CellInfo.Set_max_num_of_used_cells_to_zero() #need to initiate because its a class variable
             #print('End of Benchmark '+ str((BenchmarkStrings.index(Benchmark)) + 1) + '\n\n')
             print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n')
 
