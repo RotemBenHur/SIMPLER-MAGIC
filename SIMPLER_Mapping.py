@@ -23,6 +23,7 @@ The "RUN TIME parameters" part includes the next parameters:
 import numpy as np
 import simplejson
 from collections import OrderedDict
+import time
 
 #====================== RUN TIME parameters =====================
 #BenchmarkStrings = ['adder_netlist.v','arbiter_netlist.v','bar_netlist.v','cavlc_netlist.v','ctrl_netlist.v','dec_netlist.v','full_adder_12gates.v',
@@ -860,6 +861,7 @@ class SIMPLER_Top_Data_Structure:
             for cell in range(self.i,self.N):
                 self.cells.Insert_Available(cell) 
             #alg start here
+            t1 = time.time()#time
             for r in ROOTs:
                 self.computeCU(r)
             if SORT_ROOTS == 'NO':
@@ -869,7 +871,9 @@ class SIMPLER_Top_Data_Structure:
                         print('False - no mapping\n')
                         #code_generation_success_flag = False #Printing flag 
                         #break #To enable multiple runs. To fit the code to the article, comment this line, and uncomment the two next lines. 
-                        return False #Cannot find mapping 
+                        return False #Cannot find mapping
+                t2 = time.time()
+                print('time is:',t2-t1)#time
                 return True #A mapping of the entire netlist was found 
             else:        
                 sorted_ROOTs = [[r,self.NodesList[r].GetNodeCu()] for r in ROOTs]
