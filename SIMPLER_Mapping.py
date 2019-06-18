@@ -45,119 +45,6 @@ import time
 
 
 #================ Globals variables and Classes =================
-class SIMPLER_ListNode:  
-    
-    Init = 'Init'
-    Used = 'Used'
-    Available = 'Available'
-
-    def __init__(self, data):
-        self.data = data
-        self.next = None
-        self.previous = None
-        return
-
-    def has_value(self, value):
-        if self.data == value:
-            return True
-        else:
-            return False
-
-    def GetCellNumber(self):
-        return self.data
-
-    def Print(self):
-        print('data is', self.data)
-
-
-class DoubleLinkedList:  
-    def __init__(self,Id):
-        self.head = None
-        self.tail = None
-        self.length = 0
-        self.id = Id
-        return
-
-    def output_list(self):
-        "outputs the list (the value of the node, actually)"
-        current_node = self.head
-
-        while current_node is not None:
-            print(current_node.data)
-
-            # jump to the linked node
-            current_node = current_node.next
-        return
-
-
-    def Insert(self, item):
-
-        if isinstance(item, SIMPLER_ListNode):
-            if self.head is None:
-                self.head = item
-                item.previous = None
-                item.next = None
-                self.tail = item
-            else:
-                self.tail.next = item
-                item.previous = self.tail
-                self.tail = item
-                item.next = None
-            self.length += 1
-        return
-
-    def remove_item(self, item):
-        if isinstance(item, SIMPLER_ListNode):
-            if self.length == 1:
-                self.head = self.tail = None
-            elif self.head == item:
-                self.head = item.next
-            elif self.tail == item:
-                self.tail = item.previous
-            else:
-                next_item = item.next
-                prev_item = item.previous
-                item.previous.next = next_item
-                item.next.previous = prev_item
-            self.length -= 1
-
-
-    def IsNotEmpty(self):
-       if self.length > 0:
-           return True
-       else:
-           return False
-
-    def GetFirst(self):
-        if self.length > 0:
-            return self.head
-        else:
-            return None
-
-    def Conacatenate(self, List2):
-        self.tail = List2.head
-        List2.head = None
-        self.length += List2.length
-
-    def DeleteFirst(self):
-        self.remove_item(self.head)
-
-    def Delete(self, Idx):
-        self.remove_item(Idx) #Idx is reference
-
-    def EmptyList(self):
-        self.head = self.tail = None
-        self.length = 0
-
-    def GetListData(self):
-        current_node = self.head
-        cells_values = []
-        while current_node is not None:
-            cells_values.append(current_node.GetCellNumber())
-            # jump to the linked node
-            current_node = current_node.next
-        return
-
 class NodeData:
     
     #Op declarations 
@@ -422,19 +309,6 @@ class CellsInfo:
             self.cells[cell_idx].SetPrev(None)
             self.cells[next_cell].SetPrev(prev_cell)
             self.cells[prev_cell].SetPrev(next_cell)
-
-
-
-
-
-        
-
-
-
-
-
-
-
         
 # End of class CellState 
 
@@ -470,9 +344,6 @@ class SIMPLER_Top_Data_Structure:
         self.Max_Num_Of_Used_Cells = 0  
         self.UnConnected_wire = 0
         self.cells = CellsInfo(self.N)
-        #self.UsedList = DoubleLinkedList(1)
-        #self.AvailableList = DoubleLinkedList(2)
-        #self.InitList = DoubleLinkedList(3)
 
 
         # read input/output/wire
