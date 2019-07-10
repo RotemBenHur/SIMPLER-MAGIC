@@ -312,6 +312,49 @@ class CellsInfo:
         
 # End of class CellState 
 
+class GraphEdge:
+
+    def __init__(self,Source,Dest,Val):
+        self.s = Source
+        self.d = Dest
+        self.v = Val
+
+    def GetDest(self):
+        return self.d
+
+    def GetVal(self):
+        return self.v
+
+    def Print(self):
+        print('(' + str(self.s) + ',' + str(self.d) + '), edge val is:' + str(self.v))
+
+class GraphNode:
+
+    def __init__(self,NodeNum):
+        self.node_num = NodeNum
+        self.edges = []
+        self.num_of_edges = 0
+
+    def AddEdge(self,Dest,Val):
+        self.edges.append(GraphEdge(self.node_num,Dest,Val))
+        self.num_of_edges += 1
+        
+    def RemoveEdge(self,Dest):
+        for i,e in enumerate(self.edges):
+            if e.GetDest() == Dest:
+                del self.edges[i]
+                self.num_of_edges -= 1
+                break
+    
+    def GetNumOfEdges(self):
+        return self.num_of_edges
+
+    def GetEdgesList(self,TrueDepFlag):
+        if TrueDepFlag:
+            return [e.GetDest() for e in self.edges if e.GetVal()==1]
+        else:
+            return [e.GetDest() for e in self.edges]
+
 
 class SIMPLER_Top_Data_Structure:
 
@@ -337,6 +380,7 @@ class SIMPLER_Top_Data_Structure:
         self.ReuseCycles = 0
         self.LEAFS_inputs = []
         self.GraphMat = [] #was named D  
+        self.GraphList = []
         self.InitializationList = [] #composed of NoedData dummy instances
         self.InitializationPercentage = 0.0
         self.NoInputWireNum = 0
@@ -371,12 +415,17 @@ class SIMPLER_Top_Data_Structure:
         self.lc = len(self.varLegendCol)   
         self.i = self.lr - self.lc  # number of inputs
         self.GraphMat = np.zeros((self.lr,self.lc),dtype = np.int) #Graph matrix
+        self.GraphList = [GraphNode(idx) for idx in range(self.lr)]
         self.NodesList = [NodeData(idx) for idx in range(self.lr)]
         for input_idx in range(len(self.InputString)):   
             self.NodesList[input_idx].InsertInputNode()
         self.GraphMat = np.zeros((self.lr,self.lc),dtype = np.int) #Graph matrix
         self.readoperations(bmfId)  # parses the netlist         
-        self.LEAFS_inputs = list(range(0,self.lr - self.lc)) #Inputs indexes
+        self.LEAFS_inputs = list(range(self.i)) #Inputs indexes
+        """for node in self.GraphList:
+            for e in node.edges:
+                e.Print()
+        print(self.GraphMat)"""
         
     #Seters/geters:     
     def Get_lr(self):
@@ -586,6 +635,7 @@ class SIMPLER_Top_Data_Structure:
                 for k in range(0,num_of_op - 1):
                     inIdx = self.varLegendRow.index(operands[k])
                     self.GraphMat[inIdx][outIdx] = 1
+                    self.GraphList[inIdx].AddEdge(outIdx + self.i,1) #TODO - remove self.i
                     input_idxs.append(inIdx) #Gate inputs list
                 self.Insert_readoperations_parameters(outIdx + (self.lr -self.lc),input_idxs,op) #For statistics      
             tline = bmfId.readline()            
@@ -625,14 +675,45 @@ class SIMPLER_Top_Data_Structure:
                 self.NodesList[i].SetNodeFO(row_sum) 
         print('\n')
         return roots
-    
+
+    def GetRoots_list(self): 
+        #Returns the graph (D) roots. Also calculates the FO array.
+        roots = []
+        for i,node in enumerate(self.GraphList):
+            row_sum = self.GraphList[V_i].GetNumOfEdges()
+            if (row_sum == 0):
+                if (sum((self.ChildrenWithoutInputs_list(i))) != 0):
+                    roots.append(i)
+                else:
+                    if (PRINT_WARNING == True):
+                        print('** Warning **',self.varLegendRow[i],'has no input')
+                    self.Increase_NoInputWireNum_by_one()
+                    self.Inset_To_NoInputWireList(i)
+                    #self.Insert_No_Input_Line(i)
+            else:
+                self.NodesList[i].SetNodeFO(row_sum) 
+        print('\n')
+        return roots    
 
     def GetParents(self,V_i):
         return (np.where(self.GraphMat[V_i,:]==1)[0] + (self.lr - self.lc)) #(lr - lc) is the vertex index offset between columns and rows (relevant only for wires and outputs)
-    
+
+    def GetParents_list(self,V_i):
+        return self.GraphList[V_i].GetEdgesList(True)
+
     def GetChildrens(self,V_i):
         return np.where(self.GraphMat[:,V_i]==1)[0]
-    
+
+    def GetChildrens_list(self,V_i):
+        Children = []
+        for idx,node in enumerate(self.GraphList):
+            if idx == V_i:
+                continue
+            edges = node.GetEdgesList(True)
+            if V_i in edges:
+                Children.append(idx)
+        return Children
+            
     
     def ChildrenWithoutInputs(self,V_i):
         #Returns the childrens without netlist inputs
@@ -641,6 +722,12 @@ class SIMPLER_Top_Data_Structure:
         childrens_without_inputs = [child for child in childrens if (child in self.LEAFS_inputs) == False]
         return childrens_without_inputs
 
+    def ChildrenWithoutInputs_list(self,V_i):
+        #Returns the childrens without netlist inputs
+    
+        childrens = self.GetChildrens_list(V_i)
+        childrens_without_inputs = [child for child in childrens if (child in self.LEAFS_inputs) == False]
+        return childrens_without_inputs
 
     def computeCU(self,V_i):
         #Computes the cell usage (CU) of gate (node) V_i  
