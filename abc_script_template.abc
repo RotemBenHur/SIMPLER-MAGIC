@@ -1,9 +1,17 @@
 source abc_rc_path
 read_blif input.blif
 read_library lib.genlib 	
-resyn
-resyn2
-resyn2rs
-strash
-map                       	// required when custom genlib is used
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps
+choice; map; ps                      	// required when custom genlib is used
 write_verilog output.v

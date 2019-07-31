@@ -38,7 +38,6 @@ def main():
     abc_script_path = tempfile.mktemp()
     open(abc_script_path, "w").write(abc_script)
     os.system('%s -f "%s"' % (abc_exe_path, abc_script_path))
-    os.system('cp "%s" tmp.v' % (abc_output_path))
     # Mapping into the memory array
     SIMPLER_Mapping.SIMPLER_Main([abc_output_path], Max_num_gates, ROW_SIZE, input_path.split(".")[0], generate_json, print_mapping, print_warnings)
 
