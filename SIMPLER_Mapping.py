@@ -6,10 +6,7 @@ Written by:
     Ronny Ronen - 
     Natan Peled - natanpeled@campus.technion.ac.il
 
-Versions history:
-
 The "RUN TIME parameters" part includes the next parameters:
-    BenchmarkStrings - a list of minimized NOR and NOT netlists files to apply the algorithm on. The type of the files should be *.v.
     ROW_SIZE - a list of row sizes to run the algorithm with.
     JSON_CODE_GEN - to create an execution sequence JSON file, set this flag to TRUE.
     PRINT_CODE_GEN - to enable information print, set the flag to True. 
@@ -25,26 +22,28 @@ import simplejson
 from collections import OrderedDict
 import time
 
-#====================== RUN TIME parameters =====================
-#BenchmarkStrings = ['adder_netlist.v','arbiter_netlist.v','bar_netlist.v','cavlc_netlist.v','ctrl_netlist.v','dec_netlist.v','full_adder_12gates.v',
-#                    'int2float_netlist.v','max_netlist.v','mult8-2n.v','priority_netlist.v','sin_netlist.v','voter_netlist.v'] #EPFL
-
-
-#print controls
-#JSON_CODE_GEN = False
-#PRINT_CODE_GEN = True
-#PRINT_WARNING = True
-#SORT_ROOTS = 'NO' #Set to one of the follows: 'NO, 'ASCEND' 'DESCEND' 
-
-#limit max D
-#Max_num_gates = 20000 
-#ROW_SIZE = [256,512,1024] #a list of row sizes to run the algorithm with
-
-
-#================== End of RUN TIME parameters ==================
-
-
 #================ Globals variables and Classes =================
+
+
+class GraphEdge:
+
+    def __init__(self,Source,Dest,Val):
+        self.s = Source
+        self.d = Dest
+        self.v = Val
+
+    def GetDest(self):
+        return self.d
+
+    def GetSource(self):
+        return self.s
+
+    def GetVal(self):
+        return self.v
+
+    def Print(self):
+        print('(' + str(self.s) + ',' + str(self.d) + '), edge val is:' + str(self.v))
+
 class NodeData:
     
     #Op declarations 
@@ -75,7 +74,13 @@ class NodeData:
         self.inputs_list = Inputs_list
         self.time = Time
         self.SIMPLER_lists_node = None
-        
+
+        self.out_edges = []
+        self.in_edges = []
+        self.num_of_out_edges = 0
+        self.num_of_in_edges = 0
+
+
     def SetNodeNum(self,Num):
         self.node_num = Num
     
@@ -148,6 +153,48 @@ class NodeData:
         
     def PrintNodeData(self):
         print('node_num =',self.node_num,'inputs_list =',self.inputs_list,'op =',self.op,'cell =',self.map,'time =',self.time,'CU =',self.CU,'FO =',self.FO)
+
+    def AddOutEdge(self,Dest,Val):
+        self.out_edges.append(GraphEdge(self.node_num,Dest,Val))
+        self.num_of_out_edges += 1
+
+    def AddInEdge(self,Source,Val):
+        self.in_edges.append(GraphEdge(Source,self.node_num,Val))
+        self.num_of_in_edges += 1
+        
+    def RemoveOutEdge(self,Dest):
+        for i,e in enumerate(self.out_edges):
+            if e.GetDest() == Dest:
+                del self.out_edges[i]
+                self.num_of_out_edges -= 1
+                break
+
+    def RemoveInEdge(self,Source):
+        for i,e in enumerate(self.in_edges):
+            if e.GetSource() == Source:
+                del self.in_edges[i]
+                self.num_of_in_edges -= 1
+                break
+
+    def GetNumOfOutEdges(self):
+        return self.num_of_out_edges
+
+    def GetNumOfInEdges(self):
+        return self.num_of_in_edges
+
+    def GetOutEdgesList(self,TrueDepFlag):
+        if TrueDepFlag:
+            return [e.GetDest() for e in self.out_edges if e.GetVal()==1]
+        else:
+            return [e.GetDest() for e in self.out_edges]
+
+    def GetInEdgesList(self,TrueDepFlag):
+        if TrueDepFlag:
+            L = [e.GetSource() for e in self.in_edges if e.GetVal()==1]
+            L.reverse()
+            return L
+        else:
+            return [e.GetSource() for e in self.in_edges]
 
 class CellInfo:
     
@@ -312,24 +359,7 @@ class CellsInfo:
         
 # End of class CellState 
 
-class GraphEdge:
 
-    def __init__(self,Source,Dest,Val):
-        self.s = Source
-        self.d = Dest
-        self.v = Val
-
-    def GetDest(self):
-        return self.d
-
-    def GetSource(self):
-        return self.s
-
-    def GetVal(self):
-        return self.v
-
-    def Print(self):
-        print('(' + str(self.s) + ',' + str(self.d) + '), edge val is:' + str(self.v))
 
 class GraphNode:
 
@@ -405,8 +435,7 @@ class SIMPLER_Top_Data_Structure:
         self.t = 0 #TotalCycles
         self.ReuseCycles = 0
         self.LEAFS_inputs = []
-        self.GraphMat = [] #was named D  
-        self.GraphList = []
+        self.NodesList = []
         self.InitializationList = [] #composed of NoedData dummy instances
         self.InitializationPercentage = 0.0
         self.NoInputWireNum = 0
@@ -440,18 +469,11 @@ class SIMPLER_Top_Data_Structure:
         self.lr = len(self.varLegendRow)
         self.lc = len(self.varLegendCol)   
         self.i = self.lr - self.lc  # number of inputs
-        self.GraphMat = np.zeros((self.lr,self.lc),dtype = np.int) #Graph matrix
-        self.GraphList = [GraphNode(idx) for idx in range(self.lr)]
         self.NodesList = [NodeData(idx) for idx in range(self.lr)]
         for input_idx in range(len(self.InputString)):   
             self.NodesList[input_idx].InsertInputNode()
-        self.GraphMat = np.zeros((self.lr,self.lc),dtype = np.int) #Graph matrix
         self.readoperations(bmfId)  # parses the netlist         
         self.LEAFS_inputs = list(range(self.i)) #Inputs indexes
-        """for node in self.GraphList:
-            for e in node.edges:
-                e.Print()
-        print(self.GraphMat)"""
         
     #Seters/geters:     
     def Get_lr(self):
@@ -574,16 +596,16 @@ class SIMPLER_Top_Data_Structure:
         print ('Number of reuse cycles:',self.ReuseCycles)
         self.InitializationPercentage = self.ReuseCycles/self.t
         print ('Initialization percentage:',self.InitializationPercentage)
-        connected_gates = self.NumberOfGates - self.NoInputWireNum
+        connected_gates = self.lc - self.NoInputWireNum
         print ('Number of gates:',connected_gates)
-        print ('Max number of used cells:',self.Max_Num_Of_Used_Cells)
+        #print ('Max number of used cells:',self.Max_Num_Of_Used_Cells)
         print ('Row size (number of columns):',self.RowSize,'\n\n')
 
         #JSON creation
         if (JSON_CODE_GEN == True):
             top_JSON_dict=OrderedDict({'Benchmark':self.Benchmark}) #JSON
             top_JSON_dict.update({'Row size':self.RowSize})
-            top_JSON_dict.update({'Number of Gates':self.NumberOfGates})
+            top_JSON_dict.update({'Number of Gates':connected_gates})
             top_JSON_dict.update({'Inputs':input_list_for_print[len('Inputs:'):]})
             top_JSON_dict.update({'Outputs':output_list_for_print[len('Outputs:'):]})
             top_JSON_dict.update({'Number of Inputs':len(self.InputString)})
@@ -660,53 +682,16 @@ class SIMPLER_Top_Data_Structure:
                 input_idxs = []
                 for k in range(0,num_of_op - 1):
                     inIdx = self.varLegendRow.index(operands[k])
-                    self.GraphMat[inIdx][outIdx] = 1
-                    self.GraphList[inIdx].AddOutEdge(outIdx + self.i,1) #TODO - remove self.i
-                    self.GraphList[outIdx + self.i].AddInEdge(inIdx,1)
+                    self.NodesList[inIdx].AddOutEdge(outIdx + self.i,1) #TODO - remove self.i
+                    self.NodesList[outIdx + self.i].AddInEdge(inIdx,1)
                     input_idxs.append(inIdx) #Gate inputs list
                 self.Insert_readoperations_parameters(outIdx + (self.lr -self.lc),input_idxs,op) #For statistics      
             tline = bmfId.readline()            
 
-
-    #----------------------- D illustration: ------------------------      
-    #              Out  0   1   2   3   4 . . . (n -number of inputs) 
-    #    In            w0   w1                        out2
-    #    0 - in0 
-    #    1 - in1
-    #    2
-    #    .
-    #    .
-    #    .
-    #    k - w0
-    #    .
-    #    .
-    #    .
-    #    n-1 - out1
-    #    n - out2
-
-    def GetRoots(self): 
-        #Returns the graph (D) roots. Also calculates the FO array.
-        roots = []
-        for i in range(0,self.GraphMat.shape[0]):
-            row_sum = self.GraphMat[i,:].sum()
-            if (row_sum == 0):
-                if (sum((self.ChildrenWithoutInputs(i))) != 0):
-                    roots.append(i)
-                else:
-                    if (PRINT_WARNING == True):
-                        print('** Warning **',self.varLegendRow[i],'has no input')
-                    self.Increase_NoInputWireNum_by_one()
-                    self.Inset_To_NoInputWireList(i)
-                    #self.Insert_No_Input_Line(i)
-            else:
-                self.NodesList[i].SetNodeFO(row_sum) 
-        print('\n')
-        return roots
-
     def GetRoots_list(self): 
-        #Returns the graph (D) roots. Also calculates the FO array.
+        #Returns the graph roots. Also calculates the FO array.
         roots = []
-        for i,node in enumerate(self.GraphList):
+        for i,node in enumerate(self.NodesList):
             row_sum = node.GetNumOfOutEdges()
             if (row_sum == 0):
                 if ((node.GetNumOfInEdges()) != 0):
@@ -716,41 +701,17 @@ class SIMPLER_Top_Data_Structure:
                         print('** Warning **',self.varLegendRow[i],'has no input')
                     self.Increase_NoInputWireNum_by_one()
                     self.Inset_To_NoInputWireList(i)
-                    #self.Insert_No_Input_Line(i)
             else:
                 self.NodesList[i].SetNodeFO(row_sum) 
         print('\n')
         return roots    
 
-    def GetParents(self,V_i):
-        return (np.where(self.GraphMat[V_i,:]==1)[0] + (self.lr - self.lc)) #(lr - lc) is the vertex index offset between columns and rows (relevant only for wires and outputs)
-
     def GetParents_list(self,V_i):
-        return self.GraphList[V_i].GetOutEdgesList(True)
+        return self.NodesList[V_i].GetOutEdgesList(True)
 
-    def GetChildrens(self,V_i):
-        return np.where(self.GraphMat[:,V_i]==1)[0]
-
-    """def GetChildrens_list(self,V_i):
-        Children = []
-        for idx,node in enumerate(self.GraphList):
-            if idx == V_i:
-                continue
-            edges = node.GetOutEdgesList(True)
-            if V_i in edges:
-                Children.append(idx)
-        return Children""" #TODO - remove
-
-    def GetChildrens_list(self,V_i): #TODO - the problem is in this func
-        return self.GraphList[V_i].GetInEdgesList(True)
+    def GetChildrens_list(self,V_i): 
+        return self.NodesList[V_i].GetInEdgesList(True)
     
-    def ChildrenWithoutInputs(self,V_i):
-        #Returns the childrens without netlist inputs
-    
-        childrens = self.GetChildrens(V_i - (self.lr - self.lc)) #(lr - lc) is the vertex index offset between columns and rows (relevant only for wires and outputs)
-        childrens_without_inputs = [child for child in childrens if (child in self.LEAFS_inputs) == False]
-        return childrens_without_inputs
-
     def ChildrenWithoutInputs_list(self,V_i):
         #Returns the childrens without netlist inputs
     
@@ -763,7 +724,6 @@ class SIMPLER_Top_Data_Structure:
         if (self.NodesList[V_i].GetNodeCu() > 0):
             return # CU[V_i] was already generated and therefore doesn't change   
         childrens = self.ChildrenWithoutInputs_list(V_i)
-        #childrens = self.ChildrenWithoutInputs(V_i)  #$$$$
         if(len(childrens) == 0): #V_i has no childrens -> V_i is connected to function inputs only
             self.NodesList[V_i].SetNodeCu(1)
         else:
@@ -785,7 +745,6 @@ class SIMPLER_Top_Data_Structure:
         #Allocates cells to the gate V_i and his children (a sub-tree rooted by V_i). 
         #In a case the allocation for one of V_i's children or V_i itself is failed, the function returns False. On successful allocation returns True.
         childrens = self.ChildrenWithoutInputs_list(V_i) #Equal to C(V_i) - the set of V_i's childrens
-        #childrens = self.ChildrenWithoutInputs(V_i) #Equal to C(V_i) - the set of V_i's childrens #$$$$
         childrens_sorted_by_cu = [[child,self.NodesList[child].GetNodeCu()] for child in childrens] # the loop creates a list composed of pairs of the form [child number, CU[child number]]
         childrens_sorted_by_cu.sort(key = lambda k: k[1], reverse=True) #sorting by CU   
         childrens_sorted_by_cu = [elm[0] for elm in childrens_sorted_by_cu] #taking only the child (vertex) number       
@@ -812,18 +771,14 @@ class SIMPLER_Top_Data_Structure:
                 return 0
         self.cells.DeleteFirst_Available()
         self.cells.Insert_Used(FreeCell,V_i)
-        #self.NodesList[V_i].Set_SIMPLER_lists_node(FreeCell)
         self.t += 1
         self.Insert_AllocateCell_parameters(V_i,FreeCell)
         for V_k in self.ChildrenWithoutInputs_list(V_i):
-        #for V_k in self.ChildrenWithoutInputs(V_i): #$$$$
-            #print(V_k,V_i, self.varLegendRow[V_k], self.varLegendRow[V_i])
             self.NodesList[V_k].SetNodeFO(self.NodesList[V_k].GetNodeFO() - 1)
             if (self.NodesList[V_k].GetNodeFO() == 0):
                 cell_to_be_moved = self.NodesList[V_k].GetNodeMap()
                 self.cells.Delete_Used(cell_to_be_moved)
                 self.cells.Insert_Init(cell_to_be_moved)
-                #self.NodesList[V_i].Set_SIMPLER_lists_node(None)
         return FreeCell
 
               
@@ -843,7 +798,6 @@ class SIMPLER_Top_Data_Structure:
             #Map is the number of the cell/column V_i is mapped to. Array initialized in __init__      
             #CELLS list initialization 
             ROOTs = self.GetRoots_list() #set of all roots of the graph. Also calculates FO values.
-            #ROOTs = self.GetRoots() #set of all roots of the graph. Also calculates FO values. #$$$$
             self.IncreaseOutputsFo() # To ensure outputs who are also inputs, will not be evacuated
             self.t = 0 #Number of clock cycles        
 
@@ -876,8 +830,6 @@ class SIMPLER_Top_Data_Structure:
                     if (self.AllocateRow(sr[0]) == False):
                         print('\\\\\\\\\\\\ MAPPING OF',self.Benchmark,'WITH ROW SIZE =',self.N,' \\\\\\\\\\\\\n')
                         print('False - no mapping\n')
-                        #code_generation_success_flag = False
-                        #break
                         return False #cannot find mapping
                 return True          
 
@@ -917,7 +869,6 @@ def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, gen
             bmfId.close() #close file
             CellInfo.Set_cur_num_of_used_cells_to_zero() #need to initiate because its a class variable
             CellInfo.Set_max_num_of_used_cells_to_zero() #need to initiate because its a class variable
-            #print('End of Benchmark '+ str((BenchmarkStrings.index(Benchmark)) + 1) + '\n\n')
             print('\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\\ \n')
 
 #=========================== End of SIMPLER MAPPING ===========================
