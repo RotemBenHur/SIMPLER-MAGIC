@@ -20,6 +20,8 @@ def main():
     generate_json = config.getboolean('SIMPLER_Mapping', 'generate_json')
     print_mapping = config.getboolean('SIMPLER_Mapping', 'print_mapping')
     print_warnings = config.getboolean('SIMPLER_Mapping', 'print_warnings')
+    end_of_line_output = config.getboolean('SIMPLER_Mapping', 'end_of_line_output')
+    
 
     abc_exe_path = os.path.join(abc_dir_path, "abc")
     abc_rc_path = os.path.join(abc_dir_path, "abc.rc")
@@ -39,7 +41,7 @@ def main():
     open(abc_script_path, "w").write(abc_script)
     os.system('%s -f "%s"' % (abc_exe_path, abc_script_path))
     # Mapping into the memory array
-    SIMPLER_Mapping.SIMPLER_Main([abc_output_path], Max_num_gates, ROW_SIZE, input_path.split(".")[0], generate_json, print_mapping, print_warnings)
+    SIMPLER_Mapping.SIMPLER_Main([abc_output_path], Max_num_gates, ROW_SIZE, input_path.split(".")[0], generate_json, print_mapping, print_warnings, end_of_line_output)
 
     
 

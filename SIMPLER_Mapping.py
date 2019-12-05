@@ -429,6 +429,7 @@ class SIMPLER_Top_Data_Structure:
         self.lc = 0   
         self.RowSize = RowSize
         self.NumberOfGates = 0
+        self.number_of_outputs = 0
         self.NodesList = []
         self.i = 0
         self.N = RowSize
@@ -443,6 +444,7 @@ class SIMPLER_Top_Data_Structure:
         self.Max_Num_Of_Used_Cells = 0  
         self.UnConnected_wire = 0
         self.cells = CellsInfo(self.N)
+        self.end_of_line_output_counter = 0
 
 
         # read input/output/wire
@@ -468,6 +470,8 @@ class SIMPLER_Top_Data_Structure:
         self.len_input_and_wire = len(self.InputString + self.WireString)
         self.lr = len(self.varLegendRow)
         self.lc = len(self.varLegendCol)   
+        self.number_of_outputs = self.lr - self.len_input_and_wire
+        self.end_of_line_output_counter = self.N - self.number_of_outputs
         self.i = self.lr - self.lc  # number of inputs
         self.NodesList = [NodeData(idx) for idx in range(self.lr)]
         for input_idx in range(len(self.InputString)):   
@@ -564,7 +568,7 @@ class SIMPLER_Top_Data_Structure:
         mergerd_list = self.NodesList + self.InitializationList
         mergerd_list.sort(key = lambda k: k.GetNodeTime(), reverse=False) #Sorts by time
         #execution_dict_for_JSON=OrderedDict({}) #JSON
-        cells_to_init_list = ['INIT_CYCLE(' + str(idx) + ')' for idx in range(self.RowSize)]
+        cells_to_init_list = ['INIT_CYCLE(' + str(idx) + ')' for idx in range(self.i, self.RowSize)]
         execution_dict_for_JSON=OrderedDict({'T0':'Initialization(Ron)'+ str(cells_to_init_list).replace('[','{').replace(']','}').replace(' ','')}) #JSON
         self.Intrl_Print('\nEXECUTION SEQUENCE + MAPPING: {')
         for node in mergerd_list:
@@ -610,7 +614,7 @@ class SIMPLER_Top_Data_Structure:
             top_JSON_dict.update({'Outputs':output_list_for_print[len('Outputs:'):]})
             top_JSON_dict.update({'Number of Inputs':len(self.InputString)})
             top_JSON_dict.update({'Number of outputs':len(self.OutputString)})
-            top_JSON_dict.update({'Number of Intermediates':(connected_gates - len(self.InputString) - len(self.OutputString))})
+            #top_JSON_dict.update({'Number of Intermediates':(connected_gates - len(self.InputString) - len(self.OutputString))})
             top_JSON_dict.update({'Total cycles':self.t})
             top_JSON_dict.update({'Reuse cycles':self.ReuseCycles})
             top_JSON_dict.update({'Execution sequence' : execution_dict_for_JSON})
@@ -761,18 +765,25 @@ class SIMPLER_Top_Data_Structure:
         return True
 
     def AllocateCell(self,V_i):
-        FreeCell = self.cells.GetFirst_Available()
-        if FreeCell == None:
-            if self.cells.IsNotEmpty_Init():
-                self.t += 1
-                self.Add_To_Initialization_List(self.t, self.cells.init_list_for_json)
-                self.cells.Concatenate_init_to_available_list()
-                self.cells.Empty_Init()
-                FreeCell = self.cells.GetFirst_Available()
-            else:
-                return 0
-        self.cells.DeleteFirst_Available()
-        self.cells.Insert_Used(FreeCell,V_i)
+        global END_OF_LINE_OUTPUT
+
+        #FreCcell = None
+        if END_OF_LINE_OUTPUT and (V_i >= self.len_input_and_wire): #if end of line output mode & outpur node allocation
+            FreeCell = self.end_of_line_output_counter
+            self.end_of_line_output_counter += 1
+        else:
+            FreeCell = self.cells.GetFirst_Available()
+            if FreeCell == None:
+                if self.cells.IsNotEmpty_Init():
+                    self.t += 1
+                    self.Add_To_Initialization_List(self.t, self.cells.init_list_for_json)
+                    self.cells.Concatenate_init_to_available_list()
+                    self.cells.Empty_Init()
+                    FreeCell = self.cells.GetFirst_Available()
+                else:
+                    return 0
+            self.cells.DeleteFirst_Available()
+            self.cells.Insert_Used(FreeCell,V_i)
         self.t += 1
         self.Insert_AllocateCell_parameters(V_i,FreeCell)
         for V_k in self.ChildrenWithoutInputs_list(V_i):
@@ -793,6 +804,8 @@ class SIMPLER_Top_Data_Structure:
             
             
     def RunAlgorithm(self):
+            global END_OF_LINE_OUTPUT    
+
             #================ SIMPLER algorithm Starts ================ 
             
             #FO array initialized in __init__
@@ -805,8 +818,12 @@ class SIMPLER_Top_Data_Structure:
 
             for netlist_input in range(0,self.i):
                 self.cells.Insert_Used(netlist_input,netlist_input)
-            for cell in range(self.i,self.N):
-                self.cells.Insert_Available(cell) 
+            if END_OF_LINE_OUTPUT:
+                for cell in range(self.i,self.N - self.number_of_outputs):
+                    self.cells.Insert_Available(cell)
+            else:
+                for cell in range(self.i,self.N):
+                    self.cells.Insert_Available(cell) 
             #alg start here
             t1 = time.time()#time
             for r in ROOTs:
@@ -841,14 +858,15 @@ class SIMPLER_Top_Data_Structure:
 
    
 #======================== SIMPLER MAPPING =======================
-def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, generate_json, print_mapping, print_warnings):
-    global JSON_CODE_GEN, PRINT_CODE_GEN, PRINT_WARNING, SORT_ROOTS
+def SIMPLER_Main (BenchmarkStrings, Max_num_gates, ROW_SIZE, Benchmark_name, generate_json, print_mapping, print_warnings, end_of_line_output):
+    global JSON_CODE_GEN, PRINT_CODE_GEN, PRINT_WARNING, SORT_ROOTS, END_OF_LINE_OUTPUT
     
     #print controls
     JSON_CODE_GEN = generate_json
     PRINT_CODE_GEN = print_mapping
     PRINT_WARNING = print_warnings
-    SORT_ROOTS = 'NO' #Set to one of the follows: 'NO, 'ASCEND' 'DESCEND' 
+    SORT_ROOTS = 'NO' #Set to one of the follows: 'NO, 'ASCEND' 'DESCEND'
+    END_OF_LINE_OUTPUT = end_of_line_output
     
     for Row_size in ROW_SIZE: 
         for Benchmark in BenchmarkStrings:
